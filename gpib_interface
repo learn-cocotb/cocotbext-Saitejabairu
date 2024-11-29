@@ -1,0 +1,76 @@
+/*
+ * GPIB Protocol Design
+ * 
+ * Language: Verilog 2001
+ */
+
+`timescale 1ns / 1ns
+
+module gpib_interface #
+(
+    parameter DATA_WIDTH = 8,    // Data width for GPIB (typically 8 bits)
+    parameter ADDR_WIDTH = 5    // Address width for GPIB addressing
+)
+(
+    input  wire                 clk,           // Clock signal
+    input  wire                 rst,           // Reset signal
+
+    // GPIB signals
+    inout  wire [DATA_WIDTH-1:0] gpib_data,    // Data bus (bidirectional)
+    input  wire                 atn,           // Attention line
+    input  wire                 eoi,           // End or Identify
+    input  wire                 ifc,           // Interface Clear
+    input  wire                 ren,           // Remote Enable
+    input  wire                 srq,           // Service Request
+    input  wire                 ndac,          // Not Data Accepted
+    input  wire                 dav,           // Data Valid
+    input  wire                 nrfd,          // Not Ready for Data
+    output wire                 listener,      // Listener active
+    output wire                 talker,        // Talker active
+    output wire                 controller     // Controller active
+);
+
+// Internal signals
+reg [DATA_WIDTH-1:0] data_reg;
+reg                  listener_enable;
+reg                  talker_enable;
+reg                  controller_enable;
+
+// Example logic
+always @(posedge clk or posedge rst) begin
+    if (rst) begin
+        data_reg <= {DATA_WIDTH{1'b0}};
+        listener_enable <= 1'b0;
+        talker_enable <= 1'b0;
+        controller_enable <= 1'b0;
+    end else begin
+        // Example: Set listener, talker, or controller based on GPIB control lines
+        if (!atn && !ifc) begin
+            listener_enable <= 1'b1;
+            talker_enable <= 1'b0;
+            controller_enable <= 1'b0;
+        end else if (!ifc && srq) begin
+            talker_enable <= 1'b1;
+            listener_enable <= 1'b0;
+            controller_enable <= 1'b0;
+        end else if (!ifc && !ren) begin
+            controller_enable <= 1'b1;
+            listener_enable <= 1'b0;
+            talker_enable <= 1'b0;
+        end else begin
+            listener_enable <= 1'b0;
+            talker_enable <= 1'b0;
+            controller_enable <= 1'b0;
+        end
+    end
+end
+
+// Output assignments
+assign listener = listener_enable;
+assign talker = talker_enable;
+assign controller = controller_enable;
+
+// Example bidirectional data handling
+assign gpib_data = (!listener_enable && dav) ? data_reg : {DATA_WIDTH{1'bz}};
+
+endmodule

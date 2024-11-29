@@ -1,60 +1,20 @@
-.DEFAULT_GOAL := help
-SHELL := bash
-DUTY := $(if $(VIRTUAL_ENV),,pdm run) duty
-export PDM_MULTIRUN_VERSIONS ?= 3.8 3.9 3.10 3.11 3.12
-export PDM_MULTIRUN_USE_VENVS ?= $(if $(shell pdm config python.use_venv | grep True),1,0)
+# Makefile for GPIB simulation with cocotb
 
-args = $(foreach a,$($(subst -,_,$1)_args),$(if $(value $a),$a="$($a)"))
-check_quality_args = files
-docs_args = host port
-release_args = version
-test_args = match
+# Simulation tool
+SIM ?= icarus
 
-BASIC_DUTIES = \
-	changelog \
-	check-api \
-	check-dependencies \
-	clean \
-	coverage \
-	docs \
-	docs-deploy \
-	format \
-	release \
-	vscode
+# Top-level module and test module
+TOPLEVEL := gpib_interface
+MODULE := gpib_test
 
-QUALITY_DUTIES = \
-	check-quality \
-	check-docs \
-	check-types \
-	test
+# Verilog sources
+VERILOG_SOURCES := gpib_interface.v
 
-.PHONY: help
-help:
-	@$(DUTY) --list
+# Optional: Set the top-level language (Verilog in this case)
+TOPLEVEL_LANG ?= verilog
 
-.PHONY: lock
-lock:
-	@pdm lock -G:all
+# Optional: Reduce log verbosity for debugging
+export COCOTB_REDUCED_LOG_FMT=1
 
-.PHONY: setup
-setup:
-	@bash scripts/setup.sh
-
-.PHONY: check
-check:
-	@pdm multirun duty check-quality check-types check-docs
-	@$(DUTY) check-dependencies check-api
-
-.PHONY: $(BASIC_DUTIES)
-$(BASIC_DUTIES):
-	@$(DUTY) $@ $(call args,$@)
-
-.PHONY: $(QUALITY_DUTIES)
-$(QUALITY_DUTIES):
-	@pdm multirun duty $@ $(call args,$@)
-install:
-	python3 -m pip install --user pipx
-	pipx install pdm
-	pdm install
-	pdm install -G ci-quality
-	pdm run pre-commit install
+# Include cocotb's default Makefile.sim
+include $(shell cocotb-config --makefiles)/Makefile.sim
