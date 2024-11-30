@@ -1,7 +1,5 @@
 """Script to generate the project's credits."""
-
 from __future__ import annotations
-
 import os
 import re
 import sys
@@ -10,7 +8,6 @@ from itertools import chain
 from pathlib import Path
 from textwrap import dedent
 from typing import Mapping, cast
-
 from jinja2 import StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -25,13 +22,13 @@ with project_dir.joinpath("pyproject.toml").open("rb") as pyproject_file:
     pyproject = tomllib.load(pyproject_file)
 project = pyproject["project"]
 pdm = pyproject["tool"]["pdm"]
+
 with project_dir.joinpath("pdm.lock").open("rb") as lock_file:
     lock_data = tomllib.load(lock_file)
 lock_pkgs = {pkg["name"].lower(): pkg for pkg in lock_data["package"]}
+
 project_name = project["name"]
 regex = re.compile(r"(?P<dist>[\w.-]+)(?P<spec>.*)$")
-
-
 def _get_license(pkg_name: str) -> str:
     try:
         data = metadata(pkg_name)
@@ -45,7 +42,6 @@ def _get_license(pkg_name: str) -> str:
                 license_name = value.rsplit("::", 1)[1].strip()
     return license_name or "?"
 
-
 def _get_deps(base_deps: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str, str]]:
     deps = {}
     for dep in base_deps:
@@ -58,13 +54,12 @@ def _get_deps(base_deps: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str,
             **parsed,
             **lock_pkgs[dep_name],
         }
-
     again = True
     while again:
         again = False
-        for pkg_name in lock_pkgs:
+        for pkg_name, pkg_value in lock_pkgs.items():
             if pkg_name in deps:
-                for pkg_dependency in lock_pkgs[pkg_name].get("dependencies", []):
+                for pkg_dependency in pkg_value.get("dependencies", []):
                     parsed = regex.match(pkg_dependency).groupdict()  # type: ignore[union-attr]
                     dep_name = parsed["dist"].lower()
                     if (
@@ -78,9 +73,7 @@ def _get_deps(base_deps: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str,
                             **lock_pkgs[dep_name],
                         }
                         again = True
-
     return deps
-
 
 def _render_credits() -> str:
     dev_dependencies = _get_deps(chain(*pdm.get("dev-dependencies", {}).values()))  # type: ignore[arg-type]
@@ -90,31 +83,27 @@ def _render_credits() -> str:
             chain(*project.get("optional-dependencies", {}).values()),
         ),
     )
-
     template_data = {
         "project_name": project_name,
         "prod_dependencies": sorted(
-            prod_dependencies.values(),
-            key=lambda dep: dep["name"],
+            prod_dependencies.values(), key=lambda dep: dep["name"],
         ),
         "dev_dependencies": sorted(
-            dev_dependencies.values(),
-            key=lambda dep: dep["name"],
+            dev_dependencies.values(), key=lambda dep: dep["name"],
         ),
         "more_credits": "",
     }
     template_text = dedent(
-        """
+        """\
         # Credits
 
-        These projects were used to build *{{ project_name }}*. **Thank you!**
+        These projects were used to build *{{ project_name }}*.
+        **Thank you!**
 
-        [`python`](https://www.python.org/) |
-        [`pdm`](https://pdm.fming.dev/) |
-        [`copier-pdm`](https://github.com/pawamoy/copier-pdm)
+        [`python`]((link unavailable)) | [`pdm`]((link unavailable)) | [`copier-pdm`]((link unavailable))
 
         {% macro dep_line(dep) -%}
-        [`{{ dep.name }}`](https://pypi.org/project/{{ dep.name }}/) | {{ dep.summary }} | {{ ("`" ~ dep.spec ~ "`") if dep.spec else "" }} | `{{ dep.version }}` | {{ dep.license }}
+        [`{{ dep.name }}`]((link unavailable){{ dep.name }}/) | {{ dep.summary }} | {{ ("`" ~ dep.spec ~ "`") if dep.spec else "" }} | `{{ dep.version }}` | {{ dep.license }}
         {%- endmacro %}
 
         ### Runtime dependencies
@@ -127,17 +116,4 @@ def _render_credits() -> str:
 
         ### Development dependencies
 
-        Project | Summary | Version (accepted) | Version (last resolved) | License
-        ------- | ------- | ------------------ | ----------------------- | -------
-        {% for dep in dev_dependencies -%}
-        {{ dep_line(dep) }}
-        {% endfor %}
-
-        {% if more_credits %}**[More credits from the author]({{ more_credits }})**{% endif %}
-        """,
-    )
-    jinja_env = SandboxedEnvironment(undefined=StrictUndefined)
-    return jinja_env.from_string(template_text).render(**template_data)
-
-
-print(_render_credits())
+        Project | Summary | Version (accepted
