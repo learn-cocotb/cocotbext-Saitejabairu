@@ -1,4 +1,3 @@
-
 module gpib_dut (
    input wire clk,
     input wire rst_n,
