@@ -1,33 +1,22 @@
-import cocotb
-from cocotb.regression import TestFactory
-from cocotb.regression import TestStatus
-from cocotb.regression import TestResult
-from cocotb.clock import Clock
-
-# Command values for GPIB
-COMMAND_WRITE = 0x1
-
-class GPIBDriver:
-    def __init__(self, dut, clock, reset):
+class GPIBMonitor:
+    def __init__(self, dut):
         self.dut = dut
-        self.clock = clock
-                self.reset = reset
-    
-    async def send_command(self, command):
-        self.dut.atn.value = 0  # Assert attention
-        self.dut.gpib_data.value = command
-        self.dut.dav.value = 1  # Data valid
-        print(f"Driver: Sending command {hex(command)}")
-        await Timer(60, units="ns")
-        self.dut.dav.value = 0  # Clear data valid
+        self.received_commands = []
+        self.capture_commands = False
 
+    async def monitor_signals(self):
+        while True:
+            # Wait for rising edge of clock
+            await RisingEdge(self.dut.clk)
+            # Debugging print to monitor signal states
+            print(f"Monitor: clk={self.dut.clk.value}, listener={self.dut.listener.value}, dav={self.dut.dav.value}")
+            # Check if the capture_commands flag is set
+            if self.capture_commands:
+                # Monitor the condition when listener and dav are high
+                if self.dut.listener.value == 1 and self.dut.dav.value == 1:
+                    command = self.dut.gpib_data.value.integer
+                    self.received_commands.append(command)
+                    print(f"Monitor: Captured command {hex(command)}")
 
-    async def reset_device(self):
-        print("Performing reset...")
-        self.dut.reset <= 1
-        await cocotb.clock.cycles(5)  # Hold reset for 5 cycles
-        self.dut.reset <= 0
-        await cocotb.clock.cycles(5)  # Wait for reset to complete
-        print("Reset completed.")
 
 
