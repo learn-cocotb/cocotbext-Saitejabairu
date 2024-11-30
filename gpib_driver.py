@@ -11,13 +11,16 @@ class GPIBDriver:
     def __init__(self, dut, clock, reset):
         self.dut = dut
         self.clock = clock
-        self.reset = reset
-
+                self.reset = reset
+    
     async def send_command(self, command):
-        print(f"Sending command: {hex(command)}")
-        self.dut.command <= command  # Assuming the signal to send the command is called 'command'
-        await cocotb.clock.cycles(10)  # Wait for a few cycles to propagate
-        print(f"Command {hex(command)} sent successfully")
+        self.dut.atn.value = 0  # Assert attention
+        self.dut.gpib_data.value = command
+        self.dut.dav.value = 1  # Data valid
+        print(f"Driver: Sending command {hex(command)}")
+        await Timer(60, units="ns")
+        self.dut.dav.value = 0  # Clear data valid
+
 
     async def reset_device(self):
         print("Performing reset...")
@@ -26,3 +29,5 @@ class GPIBDriver:
         self.dut.reset <= 0
         await cocotb.clock.cycles(5)  # Wait for reset to complete
         print("Reset completed.")
+
+
